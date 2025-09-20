@@ -33,3 +33,18 @@ describe('buildFrontMatter', () => {
     );
   });
 });
+
+describe('normaliseMammothHtml', () => {
+  it('flattens table cell paragraphs and removes empties', () => {
+    const html =
+      '<table><tr><td><p>Heading</p></td><td><p>Value</p><p></p></td></tr><tr><td><p></p></td><td><p>Another</p></td></tr></table>';
+    const normalised = __internal.normaliseMammothHtml(html);
+    expect(normalised).toBe('<table><tr><td>Heading</td><td>Value</td></tr><tr><td></td><td>Another</td></tr></table>');
+  });
+
+  it('converts non-breaking spaces to regular spaces', () => {
+    const html = '<p>&nbsp;</p><p>Foo&nbsp;Bar</p>';
+    const normalised = __internal.normaliseMammothHtml(html);
+    expect(normalised).toBe('<p>Foo Bar</p>');
+  });
+});

@@ -176,7 +176,8 @@ export async function convertDocxFile(
   });
 
   const warnings = result.messages.filter((message) => message.type === 'warning').map((message) => message.message);
-  const markdownBody = turndown.turndown(result.value).trimEnd();
+  const normalisedHtml = normaliseMammothHtml(result.value);
+  const markdownBody = turndown.turndown(normalisedHtml).trimEnd();
 
   const frontMatter = buildFrontMatter({
     title: docBaseName,
@@ -249,8 +250,38 @@ function escapeYaml(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+function normaliseMammothHtml(html: string): string {
+  if (!html) {
+    return '';
+  }
+
+  let processed = html.replace(/\u00a0|&nbsp;/g, ' ');
+
+  processed = processed.replace(/<p>\s*<br\s*\/?>(\s*<br\s*\/?\s*)*\s*<\/p>/gi, '');
+  processed = processed.replace(/<p>\s*<\/p>/gi, '');
+
+  processed = processed.replace(/<(td|th)([^>]*)>([\s\S]*?)<\/\1>/gi, (_match, tag, attrs, inner) => {
+    const segments = inner
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<\/p>/gi, '\n')
+      .split('\n')
+      .map((segment: string) => segment.trim())
+      .filter((segment: string) => segment.length > 0);
+
+    const combined = segments.join('<br />');
+    const collapsedBreaks = combined.replace(/(<br\s*\/?>(\s*<br\s*\/?\s*)*)/gi, '<br />');
+    const content = collapsedBreaks.trim();
+    return `<${tag}${attrs}>${content}</${tag}>`;
+  });
+
+  processed = processed.replace(/(<br\s*\/?>(\s*<br\s*\/?\s*)*)/gi, '<br />');
+
+  return processed;
+}
+
 export const __internal = {
   slugify,
   toPosix,
-  buildFrontMatter
+  buildFrontMatter,
+  normaliseMammothHtml
 };
